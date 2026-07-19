@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 460px; font-family: -apple-system, sans-serif; background: #f8f9fa; }
+    .header { background: #0a66c2; color: #fff; padding: 12px 16px; }
+    .header h2 { font-size: 15px; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .tabs { display: flex; background: #e9ecef; border-bottom: 1px solid #dee2e6; }
+    .tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: #666; }
+    .tab.active { background: #fff; color: #0a66c2; border-bottom: 2px solid #0a66c2; }
+    .panel { display: none; padding: 12px 16px; }
+    .panel.active { display: block; }
+    .stats { background: #fff; border-radius: 8px; padding: 14px; margin-bottom: 12px; border: 1px solid #e0e0e0; }
+    .stats .count { font-size: 26px; font-weight: 700; color: #0a66c2; }
+    .stats .label { font-size: 11px; color: #666; }
+    .actions { display: flex; flex-direction: column; gap: 6px; }
+    button { padding: 9px 14px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; text-align: center; }
+    .btn-primary { background: #0a66c2; color: #fff; }
+    .btn-primary:hover { background: #084e96; }
+    .btn-secondary { background: #e0e0e0; color: #333; }
+    .btn-secondary:hover { background: #ccc; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-success { background: #28a745; color: #fff; }
+    .status { margin-top: 6px; font-size: 11px; color: #666; min-height: 18px; }
+    .query-list { max-height: 300px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
+    .query-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 11px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .query-item:hover { background: #f0f7ff; }
+    .query-item:last-child { border-bottom: none; }
+    .query-label { color: #333; }
+    .query-open { font-size: 10px; color: #0a66c2; background: #e8f0fe; padding: 2px 8px; border-radius: 10px; cursor: pointer; }
+    .query-open:hover { background: #d0e2f7; }
+    .search-count { font-size: 11px; color: #888; margin: 6px 0; }
+    .footer { padding: 8px 16px; font-size: 10px; color: #999; text-align: center; border-top: 1px solid #e0e0e0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Naggar Lead Collector</h2>
+    <p>Standalone — saves to browser, exports to CSV/Excel</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="leads">My Leads</button>
+    <button class="tab" data-tab="discover">Auto Discover</button>
+  </div>
+
+  <!-- ===== LEADS TAB ===== -->
+  <div class="panel active" id="panel-leads">
+    <div class="stats">
+      <div class="count" id="leadCount">0</div>
+      <div class="label">leads saved in browser</div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="downloadBtn"> Download CSV (open in Excel)</button>
+      <button class="btn-secondary" id="currentBtn"> Extract Current Profile</button>
+      <button class="btn-danger" id="clearBtn"> Clear All Leads</button>
+    </div>
+    <div id="statusLeads" class="status"></div>
+  </div>
+
+  <!-- ===== AUTO DISCOVER TAB ===== -->
+  <div class="panel" id="panel-discover">
+    <p style="font-size:12px;color:#555;margin-bottom:8px">
+      Click a search query to open it in a new tab. Then click <strong>"Save All Visible"</strong> button to collect leads.
+    </p>
+    <div id="queryList" class="query-list"></div>
+    <div style="margin-top:8px;display:flex;gap:6px">
+      <button class="btn-success" id="openAllBtn" style="flex:1"> Open All 58 Queries</button>
+      <button class="btn-secondary" id="hideOpenedBtn"> Hide Opened</button>
+    </div>
+    <div id="statusDiscover" class="status"></div>
+  </div>
+
+  <div class="footer">All 22 CRM columns filled automatically. No server needed.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.xlsx
+*.csv
+.DS_Store
+venv/
+.venv/
+data/session/
