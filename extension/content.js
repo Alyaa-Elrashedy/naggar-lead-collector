@@ -242,12 +242,34 @@ function extractProfile() {
   const url = window.location.href.split("?")[0];
   if (!url.includes("/in/")) return null;
 
-  const nameEl = document.querySelector("h1");
-  const name = nameEl ? nameEl.innerText.trim() : "";
+  // Try multiple selectors for name (LinkedIn changes layout often)
+  const nameSelectors = [
+    "h1",
+    "h2",
+    "[class*='profile-name']",
+    "[class*='inline-show-more-text']",
+    "[class*='text-heading-xlarge']",
+  ];
+  let name = "";
+  for (const sel of nameSelectors) {
+    const el = document.querySelector(sel);
+    if (el && el.innerText.trim().length > 2) { name = el.innerText.trim(); break; }
+  }
 
-  const headlineEl = document.querySelector("[class*='text-body-medium'], [class*='pv-top-card--headline'], [class*='pv-text-details']");
-  const title = headlineEl ? headlineEl.innerText.trim() : "";
+  // Title / headline
+  const titleSelectors = [
+    "[class*='text-body-medium']",
+    "[class*='pv-top-card--headline']",
+    "[class*='pv-text-details']",
+    "[class*='text-heading-small']",
+  ];
+  let title = "";
+  for (const sel of titleSelectors) {
+    const el = document.querySelector(sel);
+    if (el && el.innerText.trim().length > 3) { title = el.innerText.trim(); break; }
+  }
 
+  // Company from experience section
   let company = "";
   const expSec = document.querySelector("section:has(#experience)");
   if (expSec) {
@@ -258,13 +280,15 @@ function extractProfile() {
     }
   }
 
+  // Location — look near the top of the page only
   let location = "";
-  document.querySelectorAll("span, div").forEach(el => {
+  const locCandidates = document.querySelectorAll("[class*='pv-text-details'] span, [class*='top-card'] span, [class*='location']");
+  for (const el of locCandidates) {
     const t = el.innerText.trim();
-    if (t && t.length > 5 && t.length < 80 && !t.includes("http") && !t.includes("·") && /[a-zA-Z]/.test(t) && (t.includes(",") || /(?:University|City|Region|State|Arab|Emirates|Egypt|Riyadh|Dubai|Abu Dhabi|Cairo|Jeddah|Doha)/i.test(t))) {
-      location = t; return;
+    if (t && t.length > 3 && t.length < 80 && /[a-zA-Z]/.test(t) && (t.includes(",") || /(University|City|Region|State|Egypt|Riyadh|Dubai|Cairo|Jeddah|Doha)/i.test(t))) {
+      location = t; break;
     }
-  });
+  }
 
   const username = url.match(/linkedin\.com\/in\/([^/?]+)/)?.[1] || "";
   return makeLead({
