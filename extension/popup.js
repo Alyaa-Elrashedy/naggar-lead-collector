@@ -95,21 +95,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // ─── AUTO DISCOVER ───
-  const queries = await new Promise(resolve => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "getQueries" }, response => {
-          resolve(response?.queries || []);
-        });
-      } else {
-        resolve([]);
-      }
-    });
-  });
-
-  // Fallback: define queries inline
-  const fallbackQueries = [
+  // ─── AUTO DISCOVER (58 search queries, no contact with content script needed) ───
+  const allQueries = [
     {label:"Professors - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20professor"},
     {label:"Professors - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20professor"},
     {label:"Professors - Public Health",url:"https://www.linkedin.com/search/results/people/?keywords=public%20health%20professor"},
@@ -169,7 +156,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     {label:"Research Assistants",url:"https://www.linkedin.com/search/results/people/?keywords=research%20assistant%20biostatistics"},
     {label:"Teaching Assistants - Statistics",url:"https://www.linkedin.com/search/results/people/?keywords=teaching%20assistant%20statistics"},
   ];
-  const allQueries = queries.length > 0 ? queries : fallbackQueries;
 
   function renderQueries(list) {
     $("queryList").innerHTML = list.map((q, i) =>
