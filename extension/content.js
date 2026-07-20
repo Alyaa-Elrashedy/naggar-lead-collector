@@ -368,27 +368,17 @@ function placeProfileButton() {
   if (!window.location.href.includes("/in/")) return false;
   document.querySelectorAll("#naggar-save-btn").forEach(e => e.remove());
 
-  // Try multiple selectors LinkedIn may use (they change layout often)
-  const selectors = [
-    "[class*='pv-top-card']",
-    "[class*='profile-topcard']",
-    "[class*='top-card']",
-    ".ph5.pb5",
-    "[class*='mt2']",
-    "[class*='profile-card']",
-    "[class*='pv-text-details']",
-    "main section:first-child div:first-child",
-    "main div:first-child div:first-child",
-  ];
-  let target = null;
-  for (const sel of selectors) {
-    target = document.querySelector(sel);
-    if (target) break;
-  }
-  if (!target) return false;
-
   const btn = createSaveLeadBtn();
-  target.prepend(btn);
+  btn.style.position = "fixed";
+  btn.style.bottom = "24px";
+  btn.style.right = "24px";
+  btn.style.zIndex = "999999";
+  btn.style.borderRadius = "24px";
+  btn.style.padding = "12px 24px";
+  btn.style.fontSize = "14px";
+  btn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.25)";
+  btn.style.transition = "all 0.2s";
+  document.body.appendChild(btn);
   return true;
 }
 

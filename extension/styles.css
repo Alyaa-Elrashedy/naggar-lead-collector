@@ -1,45 +1,17 @@
-#naggar-save-btn {
+#naggar-save-btn, #naggar-search-btn {
+  font-family: -apple-system, system-ui, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
   background-color: #0a66c2;
   color: white;
   border: none;
-  border-radius: 16px;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin: 4px 8px 4px 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: -apple-system, system-ui, sans-serif;
-  transition: background 0.2s;
-}
-#naggar-save-btn:hover {
-  background-color: #084e96;
-}
-#naggar-save-btn:active {
-  transform: scale(0.97);
-}
-
-#naggar-search-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 999999;
-  background-color: #0a66c2;
-  color: white;
-  border: none;
-  border-radius: 24px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  font-family: -apple-system, system-ui, sans-serif;
   transition: all 0.2s;
 }
-#naggar-search-btn:hover {
+#naggar-save-btn:hover, #naggar-search-btn:hover {
   background-color: #084e96;
   box-shadow: 0 6px 16px rgba(0,0,0,0.3);
   transform: translateY(-1px);
+}
+#naggar-save-btn:active, #naggar-search-btn:active {
+  transform: scale(0.97);
 }
