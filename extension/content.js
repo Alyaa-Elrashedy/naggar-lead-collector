@@ -347,55 +347,99 @@ async function saveLeads(newLeads) {
   return { saved: added, total: existing.length };
 }
 
-// ─── UI: inject buttons ───
-function injectButtons() {
-  // Profile page button
-  if (window.location.href.includes("/in/")) {
-    document.querySelectorAll("#naggar-save-btn").forEach(e => e.remove());
-    const btn = document.createElement("button");
-    btn.id = "naggar-save-btn";
-    btn.textContent = " Save Lead";
-    btn.onclick = async () => {
-      const data = extractProfile();
-      if (!data || !data.full_name) { alert("Could not extract profile data. Make sure you're on a LinkedIn profile page."); return; }
-      btn.textContent = "⏳ Saving...";
-      const result = await saveLeads([data]);
-      btn.textContent = ` Saved! (${result.total} total)`;
-      setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
-    };
-    const target = document.querySelector("[class*='pv-top-card'], [class*='profile-topcard'], [class*='mt2'], .ph5.pb5");
-    if (target) target.prepend(btn);
-  }
+// ─── Create a "Save Lead" button ───
+function createSaveLeadBtn() {
+  const btn = document.createElement("button");
+  btn.id = "naggar-save-btn";
+  btn.textContent = " Save Lead";
+  btn.onclick = async () => {
+    const data = extractProfile();
+    if (!data || !data.full_name) { alert("Could not extract profile data."); return; }
+    btn.textContent = "⏳ Saving...";
+    const result = await saveLeads([data]);
+    btn.textContent = ` Saved! (${result.total} total)`;
+    setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
+  };
+  return btn;
+}
 
-  // Search results button
-  if (window.location.href.includes("/search/results/people/")) {
-    document.querySelectorAll("#naggar-search-btn").forEach(e => e.remove());
-    const btn = document.createElement("button");
-    btn.id = "naggar-search-btn";
-    btn.textContent = " Save All Visible";
-    btn.onclick = async () => {
-      const leads = extractSearchResults();
-      if (leads.length === 0) { alert("No LinkedIn profiles found on this page. Make sure search results are loaded."); return; }
-      btn.textContent = `⏳ Saving ${leads.length}...`;
-      const result = await saveLeads(leads);
-      btn.textContent = ` Saved ${result.saved}! (${result.total} total)`;
-      setTimeout(() => { btn.textContent = " Save All Visible"; }, 3000);
-    };
-    document.body.appendChild(btn);
+// ─── Try to place button on profile using multiple selector strategies ───
+function placeProfileButton() {
+  if (!window.location.href.includes("/in/")) return false;
+  document.querySelectorAll("#naggar-save-btn").forEach(e => e.remove());
+
+  // Try multiple selectors LinkedIn may use (they change layout often)
+  const selectors = [
+    "[class*='pv-top-card']",
+    "[class*='profile-topcard']",
+    "[class*='top-card']",
+    ".ph5.pb5",
+    "[class*='mt2']",
+    "[class*='profile-card']",
+    "[class*='pv-text-details']",
+    "main section:first-child div:first-child",
+    "main div:first-child div:first-child",
+  ];
+  let target = null;
+  for (const sel of selectors) {
+    target = document.querySelector(sel);
+    if (target) break;
+  }
+  if (!target) return false;
+
+  const btn = createSaveLeadBtn();
+  target.prepend(btn);
+  return true;
+}
+
+// ─── Create "Save All Visible" button ───
+function placeSearchButton() {
+  if (!window.location.href.includes("/search/results/people/")) return;
+  document.querySelectorAll("#naggar-search-btn").forEach(e => e.remove());
+  const btn = document.createElement("button");
+  btn.id = "naggar-search-btn";
+  btn.textContent = " Save All Visible";
+  btn.onclick = async () => {
+    const leads = extractSearchResults();
+    if (leads.length === 0) { alert("No profiles found."); return; }
+    btn.textContent = `⏳ Saving ${leads.length}...`;
+    const result = await saveLeads(leads);
+    btn.textContent = ` Saved ${result.saved}! (${result.total} total)`;
+    setTimeout(() => { btn.textContent = " Save All Visible"; }, 3000);
+  };
+  document.body.appendChild(btn);
+}
+
+// ─── Inject buttons with retry for SPA-loaded profiles ───
+function injectButtons() {
+  // Always try search button
+  placeSearchButton();
+
+  // If on a profile page, try placing the button
+  if (window.location.href.includes("/in/")) {
+    if (!placeProfileButton()) {
+      // Retry up to 10 times (every 1s) — LinkedIn takes time to load profile DOM
+      let attempts = 0;
+      const retry = setInterval(() => {
+        attempts++;
+        if (placeProfileButton() || attempts >= 10) clearInterval(retry);
+      }, 1000);
+    }
   }
 }
 
 // ─── Run ───
-setTimeout(injectButtons, 2000);
+setTimeout(injectButtons, 1500);
 
-// Handle LinkedIn SPA navigation
+// Handle LinkedIn SPA navigation (profile opens without full page load)
 let lastUrl = window.location.href;
-new MutationObserver(() => {
+const observer = new MutationObserver(() => {
   if (window.location.href !== lastUrl) {
     lastUrl = window.location.href;
-    setTimeout(injectButtons, 1500);
+    setTimeout(injectButtons, 1200);
   }
-}).observe(document, { subtree: true, childList: true });
+});
+observer.observe(document, { subtree: true, childList: true });
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
