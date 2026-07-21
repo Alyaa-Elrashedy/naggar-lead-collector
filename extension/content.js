@@ -476,22 +476,7 @@ function createSaveLeadBtn() {
       const result = await saveLeads([data]);
       const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
       showToast(`Saved: ${info}`, "success");
-      btn.textContent = ` ${data.full_name} ✓`;
-      btn.style.background = "#16a34a";
-      btn.style.color = "#fff";
-      const banner = document.createElement("div");
-      banner.id = "naggar-last-saved";
-      banner.style.cssText = "position:fixed;bottom:76px;right:24px;background:#16a34a;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;font-family:-apple-system,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:999999;transition:opacity 0.3s;";
-      banner.textContent = `✓ ${data.full_name}`;
-      document.querySelectorAll("#naggar-last-saved").forEach(e => e.remove());
-      document.body.appendChild(banner);
-      setTimeout(() => {
-        btn.style.background = "";
-        btn.style.color = "";
-        btn.textContent = " Save Lead";
-        const b = document.getElementById("naggar-last-saved");
-        if (b) { b.style.opacity = "0"; setTimeout(() => b.remove(), 400); }
-      }, 4000);
+      btn.textContent = " Save Lead";
       btn.style.opacity = "1";
       saving = false;
       window.__naggarSaving = false;
