@@ -494,7 +494,9 @@ function placeProfileButton() {
 
 // ─── Create "Save All Visible" button ───
 function placeSearchButton() {
-  if (!window.location.href.includes("/search/results/people/")) return;
+  const hasPeopleLinks = document.querySelectorAll("a[href*='/in/']").length > 5;
+  const isSearch = window.location.href.includes("/search/results/");
+  if (!isSearch && !hasPeopleLinks) return;
   document.querySelectorAll("#naggar-search-btn").forEach(e => e.remove());
   const btn = document.createElement("button");
   btn.id = "naggar-search-btn";
@@ -521,13 +523,20 @@ function placeSearchButton() {
 
 // ─── Inject buttons with retry for SPA-loaded profiles ───
 function injectButtons() {
-  // Always try search button
+  // Always try search button (with retry for SPA navigation)
   placeSearchButton();
+  let searchAttempts = 0;
+  const searchRetry = setInterval(() => {
+    searchAttempts++;
+    if (searchAttempts >= 8) clearInterval(searchRetry);
+    const btn = document.getElementById("naggar-search-btn");
+    if (!btn) placeSearchButton();
+    else clearInterval(searchRetry);
+  }, 1500);
 
   // If on a profile page, try placing the button
   if (window.location.href.includes("/in/")) {
     if (!placeProfileButton()) {
-      // Retry up to 10 times (every 1s) — LinkedIn takes time to load profile DOM
       let attempts = 0;
       const retry = setInterval(() => {
         attempts++;
