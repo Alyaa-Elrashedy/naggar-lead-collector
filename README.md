@@ -12,12 +12,17 @@ Chrome extension for collecting LinkedIn leads into a structured CRM format (22 
 ## How to Use
 
 ### Collect Leads
-- **Individual profile**: Go to any LinkedIn profile → click the blue **"Save Lead"** button (bottom-right)
-- **Search results**: Go to LinkedIn People Search → click **"Save All Visible"** button (bottom-right of page)
-- **Auto Discover**: Click the extension icon → **Auto Discover** tab → click any of the preset search queries
+- **On LinkedIn**: Go to any profile → click **"Save Lead"** (bottom-right). Or search people → click **"Save All Visible"**
+- **By URL**: Click extension → **Settings** → paste a profile URL → **Add Lead** (adds to My Leads directly)
+- **Auto Discover**: Click extension → **Auto Discover** → click any preset search → LinkedIn opens → click **"Save All Visible"**
+- **Custom searches**: Click extension → **Settings** → paste any LinkedIn People Search URL → **Add** (appears in Auto Discover)
+
+### Manage Leads
+- Click extension → **My Leads**: view all leads, see type breakdown, delete individual leads
+- **Settings**: import/export JSON backup, clear all
 
 ### Export
-- Click extension icon → **My Leads** → **Download CSV** → open in Excel
+- Click extension → **My Leads** → **Download CSV** → open in Excel
 - CSV includes all 22 CRM columns ready for import
 
 ## What's Inside
