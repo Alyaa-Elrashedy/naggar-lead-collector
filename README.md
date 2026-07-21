@@ -1,28 +1,49 @@
 # Naggar Lead Collector
 
-Chrome extension that captures LinkedIn profiles into a structured CRM spreadsheet (22 columns). No server needed.
+Chrome extension for collecting LinkedIn leads into a structured CRM format (22 columns). No server needed.
 
-## Install
+## How to Install
 
-1. `chrome://extensions/` → Developer mode → **Load unpacked** → select the `extension` folder
+1. Open Chrome and go to `chrome://extensions/`
+2. Turn on **Developer mode** (top right)
+3. Click **Load unpacked** → select the `extension` folder
+4. The extension is now installed
 
-## Use
+## How to Use
 
-**Save leads:**
-- On any LinkedIn profile → click **"Save Lead"** (bottom-right)
-- On LinkedIn people search → click **"Save All Visible"**
+### Collect Leads
+- **Individual profile**: Go to any LinkedIn profile → click the blue **"Save Lead"** button (bottom-right)
+- **Search results**: Go to LinkedIn People Search → click **"Save All Visible"** button (bottom-right of page)
+- **Auto Discover**: Click the extension icon → **Auto Discover** tab → click any of the preset search queries
 
-**Auto Discover:**
-Click extension icon → **Auto Discover** tab → click any of 63 preset searches to open LinkedIn results → then click "Save All Visible"
+### Export
+- Click extension icon → **My Leads** → **Download CSV** → open in Excel
+- CSV includes all 22 CRM columns ready for import
 
-**Settings:**
-- Add profile URLs directly to My Leads
-- Add custom search queries to Auto Discover
-- Import/export JSON backups
+## What's Inside
 
-**Export:**
-Click extension icon → **My Leads** → **Download CSV** → open in Excel
+| File | Purpose |
+|------|---------|
+| `extension/` | Chrome extension (load this) |
+| `extension/manifest.json` | Extension config |
+| `extension/content.js` | LinkedIn scraping + classification logic |
+| `extension/popup.html` | Popup UI (My Leads + Auto Discover + Settings tabs) |
+| `extension/popup.js` | Popup logic + search queries |
+| `extension/styles.css` | Button styles |
+| `extension/background.js` | Badge counter service worker |
 
-All 22 columns filled automatically: name, title, company, location, profile type, pain points, value proposition, outreach message, score, revenue potential, and more.
+## CRM Columns
 
-*Built for Naggar Analytics*
+date_discovered, source, profile_url, full_name, title, company_institution, location, email/Contact, linkedin_username, profile_type, pain_points_identified, value_proposition, outreach_template_used, outreach_message, outreach_status, outreach_date, follow_up_date, response, converted, revenue_potential, notes, score
+
+## Profile Types
+
+- `academic_researcher` — Professors, PhDs, Postdocs, Research Scientists, Bioinformaticians, Data Scientists
+- `university_admin` — Deans, Directors, VPs, Department Chairs
+- `global_pharma` — Biostatisticians, Clinical Trial Managers, CROs, Bioinformaticians
+- `partnership_target` — Co-founders, CEOs, Consortium Leaders, Freelancers, Consultants
+- `ambassador` — Graduate Students, Research Assistants, Interns
+
+---
+
+Built for Naggar Analytics
