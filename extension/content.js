@@ -467,7 +467,11 @@ function createSaveLeadBtn() {
       const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
       showToast(`Saved: ${info}`, "success");
       btn.textContent = ` ${data.full_name} ✓`;
-      setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
+      btn.style.background = "#16a34a";
+      setTimeout(() => {
+        btn.style.background = "#0a66c2";
+        btn.textContent = " Save Lead";
+      }, 3000);
       btn.style.opacity = "1";
       saving = false;
     } catch (e) { showToast("Save failed", "error"); btn.textContent = " Save Lead"; btn.style.opacity = "1"; saving = false; }
@@ -526,7 +530,6 @@ function placeSearchButton() {
       showToast(`Saved ${result.saved} leads (${result.total} total)`, "success");
       btn.textContent = ` ${result.total} Total`;
       setTimeout(() => { btn.textContent = " Save All Visible"; }, 2000);
-      btn.textContent = " Save All Visible";
       btn.style.opacity = "1";
       saving = false;
     } catch (e) { showToast("Batch save failed", "error"); btn.textContent = " Save All Visible"; btn.style.opacity = "1"; saving = false; }
