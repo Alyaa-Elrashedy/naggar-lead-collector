@@ -296,24 +296,29 @@ function extractProfile() {
   const url = window.location.href.split("?")[0];
   if (!url.includes("/in/")) return null;
 
-  // Try multiple selectors for name
+  // Try multiple selectors for name — prefer LinkedIn-specific classes over h1
   const nameSelectors = [
-    "h1", "h2",
-    "[class*='profile-name']",
-    "[class*='inline-show-more-text']",
     "[class*='text-heading-xlarge']",
     "[class*='text-heading-large']",
+    "[class*='profile-name']",
+    "[class*='inline-show-more-text']",
+    "h1",
+    "h2",
   ];
   let name = "";
   for (const sel of nameSelectors) {
     const el = document.querySelector(sel);
-    if (el && el.innerText.trim().length > 2) { name = el.innerText.trim(); break; }
+    if (!el) continue;
+    const t = el.innerText.trim();
+    if (t.length > 2 && t.length < 80 && /[A-Za-z]{2,}/.test(t) && !/^\d/.test(t) && !/notifications|messages|search/i.test(t)) {
+      name = t; break;
+    }
   }
   // Fallback: find any visible large text that looks like a name (2+ capitalized words)
   if (!name) {
     for (const el of document.querySelectorAll("main span, main div")) {
       const t = el.innerText.trim();
-      if (t.length > 4 && t.length < 60 && /^[A-Z][a-z]+ [A-Z]/.test(t) && !t.includes("\n")) {
+      if (t.length > 4 && t.length < 60 && /^[A-Za-z]/.test(t) && /\s[A-Z]/.test(t) && !t.includes("\n") && !/notifications|messages|search|inbox|\d{3,}/i.test(t)) {
         // Check parent for the typical profile card structure
         let p = el.parentElement;
         for (let i = 0; i < 4; i++) { if (p) p = p.parentElement; }
