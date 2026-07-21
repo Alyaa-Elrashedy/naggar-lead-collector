@@ -501,6 +501,14 @@ function placeSearchButton() {
   const btn = document.createElement("button");
   btn.id = "naggar-search-btn";
   btn.textContent = " Save All Visible";
+  btn.style.position = "fixed";
+  btn.style.bottom = "24px";
+  btn.style.right = "24px";
+  btn.style.zIndex = "999999";
+  btn.style.borderRadius = "24px";
+  btn.style.padding = "12px 24px";
+  btn.style.fontSize = "14px";
+  btn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.25)";
   let saving = false;
   btn.onclick = async () => {
     if (saving) return;
