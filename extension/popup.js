@@ -212,6 +212,11 @@ const BUILT_IN_QUERIES = [
   {label:"Graduate Students - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=master%20student%20biostatistics"},
   {label:"Research Assistants",url:"https://www.linkedin.com/search/results/people/?keywords=research%20assistant%20biostatistics"},
   {label:"Teaching Assistants - Statistics",url:"https://www.linkedin.com/search/results/people/?keywords=teaching%20assistant%20statistics"},
+  {label:"Bioinformaticians",url:"https://www.linkedin.com/search/results/people/?keywords=bioinformatician"},
+  {label:"Freelance Biostatisticians",url:"https://www.linkedin.com/search/results/people/?keywords=freelancer%20biostatistician"},
+  {label:"Data Scientists - Research",url:"https://www.linkedin.com/search/results/people/?keywords=data%20scientist%20research"},
+  {label:"Consultants - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20consultant"},
+  {label:"Bioinformatics Students",url:"https://www.linkedin.com/search/results/people/?keywords=bioinformatics%20student"},
 ];
 
 async function renderQueries() {

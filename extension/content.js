@@ -75,12 +75,18 @@ const SEARCH_QUERIES = [
   { label: "Graduate Students - Biostatistics", url: "https://www.linkedin.com/search/results/people/?keywords=master%20student%20biostatistics" },
   { label: "Research Assistants", url: "https://www.linkedin.com/search/results/people/?keywords=research%20assistant%20biostatistics" },
   { label: "Teaching Assistants - Statistics", url: "https://www.linkedin.com/search/results/people/?keywords=teaching%20assistant%20statistics" },
+  // New roles
+  { label: "Bioinformaticians", url: "https://www.linkedin.com/search/results/people/?keywords=bioinformatician" },
+  { label: "Freelance Biostatisticians", url: "https://www.linkedin.com/search/results/people/?keywords=freelancer%20biostatistician" },
+  { label: "Data Scientists - Research", url: "https://www.linkedin.com/search/results/people/?keywords=data%20scientist%20research" },
+  { label: "Consultants - Biostatistics", url: "https://www.linkedin.com/search/results/people/?keywords=biostatistics%20consultant" },
+  { label: "Bioinformatics Students", url: "https://www.linkedin.com/search/results/people/?keywords=bioinformatics%20student" },
 ];
 
 // ─── Classification rules ───
 const PROFILE_RULES = {
   academic_researcher: {
-    keywords: ["professor", "lecturer", "researcher", "phd", "postdoc", "postdoctoral", "scientist", "faculty", "teaching assistant", "fellow", "phd candidate", "phd student"],
+    keywords: ["professor", "lecturer", "researcher", "phd", "postdoc", "postdoctoral", "scientist", "faculty", "teaching assistant", "fellow", "phd candidate", "phd student", "bioinformatician", "data scientist"],
     pain_points: "Needs to publish in Q1 journals for promotion. No in-house biostatistics core. Commercial CROs charge $4,000+ per analysis. Learning SPSS/R takes months.",
     value_prop: "Naggar AI: $19/analysis, 15-min turnaround, human-verified statistical reports. Bilingual support.",
     template: "researcher_cold",
@@ -94,21 +100,21 @@ const PROFILE_RULES = {
     score_min: 80, score_max: 100,
   },
   global_pharma: {
-    keywords: ["biostatistician", "clinical trial", "pharma", "pharmaceutical", "cro", "biotech", "clinical research", "medical affairs", "regulatory"],
+    keywords: ["biostatistician", "clinical trial", "pharma", "pharmaceutical", "cro", "biotech", "clinical research", "medical affairs", "regulatory", "bioinformatician"],
     pain_points: "In-house biostatistics team at full capacity. Delayed analysis slows pilot studies. Need FDA-compliant statistical reporting.",
     value_prop: "Naggar consulting overflow: high-end human-in-the-loop biostatistics meeting FDA/clinical trial standards.",
     template: "global_biomedical_researcher",
     score_min: 70, score_max: 95,
   },
   partnership_target: {
-    keywords: ["co-founder", "ceo", "founder", "initiative", "capacity building", "workshop", "training", "consortium", "network", "alliance"],
+    keywords: ["co-founder", "ceo", "founder", "initiative", "capacity building", "workshop", "training", "consortium", "network", "alliance", "freelancer", "independent", "consultant"],
     pain_points: "Workshop participants need affordable biostatistics support. Building research capacity requires accessible tools.",
     value_prop: "Strategic partnership: integrate Naggar AI into training programs with custom discounted packages.",
     template: "biostruct_africa_partnership",
     score_min: 85, score_max: 100,
   },
   ambassador: {
-    keywords: ["student", "master", "undergraduate", "graduate", "intern", "trainee", "research assistant"],
+    keywords: ["student", "master", "undergraduate", "graduate", "intern", "trainee", "research assistant", "bioinformatics intern", "data science intern"],
     pain_points: "Learning statistical analysis from scratch is time-consuming. Limited budget for professional services.",
     value_prop: "Naggar AI student ambassador program: free/discounted platform access with guided statistical logic.",
     template: "researcher_cold",
