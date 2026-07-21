@@ -464,7 +464,8 @@ function createSaveLeadBtn() {
       const data = extractProfile();
       if (!data || !data.full_name) { showToast("No profile data found", "error"); saving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
       const result = await saveLeads([data]);
-      showToast(`Saved: ${data.full_name}`, "success");
+      const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
+      showToast(`Saved: ${info}`, "success");
       btn.textContent = " Save Lead";
       btn.style.opacity = "1";
       saving = false;
@@ -520,7 +521,7 @@ function placeSearchButton() {
       if (leads.length === 0) { showToast("No profiles found on this page", "info"); saving = false; btn.textContent = " Save All Visible"; btn.style.opacity = "1"; return; }
       btn.textContent = ` Saving ${leads.length}...`;
       const result = await saveLeads(leads);
-      showToast(`Saved ${result.saved} new leads`, "success");
+      showToast(`Saved ${result.saved} leads (${result.total} total)`, "success");
       btn.textContent = " Save All Visible";
       btn.style.opacity = "1";
       saving = false;
