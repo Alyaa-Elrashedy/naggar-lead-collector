@@ -223,11 +223,15 @@ function injectToast() {
 }
 function showToast(msg, type) {
   injectToast();
+  const container = document.getElementById("naggar-toast");
+  // Replace existing toast instead of stacking
+  const existing = container.querySelector("div");
+  if (existing) { existing.textContent = msg; existing.style.background = (type === "error" ? "#dc3545" : type === "info" ? "#0a66c2" : "#28a745"); clearTimeout(existing._timer); setTimeout(() => { existing.style.opacity = "0"; existing.style.transition = "opacity 0.4s"; setTimeout(() => existing.remove(), 400); }, 2800); return; }
   const t = document.createElement("div");
   t.style.cssText = "padding:10px 16px;border-radius:8px;font-size:13px;font-family:-apple-system,sans-serif;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:naggarFadeIn 0.3s ease;pointer-events:auto;max-width:320px;word-break:break-word;background:" + (type === "error" ? "#dc3545" : type === "info" ? "#0a66c2" : "#28a745") + ";color:#fff";
   t.textContent = msg;
-  document.getElementById("naggar-toast").appendChild(t);
-  setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity 0.4s"; setTimeout(() => t.remove(), 400); }, 2800);
+  container.appendChild(t);
+  t._timer = setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity 0.4s"; setTimeout(() => t.remove(), 400); }, 2800);
 }
 const styleSheet = document.createElement("style");
 styleSheet.textContent = "@keyframes naggarFadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}";
@@ -461,21 +465,20 @@ function createSaveLeadBtn() {
   btn.textContent = " Save Lead";
   let saving = false;
   btn.onclick = async () => {
-    if (saving) return;
+    if (saving || window.__naggarSaving) return;
     saving = true;
+    window.__naggarSaving = true;
     btn.textContent = "⏳";
     btn.style.opacity = "0.6";
     try {
       const data = extractProfile();
-      if (!data || !data.full_name) { showToast("No profile data found — try scrolling or refreshing", "error"); saving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
+      if (!data || !data.full_name) { showToast("No profile data found — try scrolling or refreshing", "error"); saving = false; window.__naggarSaving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
       const result = await saveLeads([data]);
       const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
       showToast(`Saved: ${info}`, "success");
-      // Show name on button with green check
       btn.textContent = ` ${data.full_name} ✓`;
       btn.style.background = "#16a34a";
       btn.style.color = "#fff";
-      // Also show a persistent name banner near the button
       const banner = document.createElement("div");
       banner.id = "naggar-last-saved";
       banner.style.cssText = "position:fixed;bottom:76px;right:24px;background:#16a34a;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;font-family:-apple-system,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:999999;transition:opacity 0.3s;";
@@ -491,7 +494,8 @@ function createSaveLeadBtn() {
       }, 4000);
       btn.style.opacity = "1";
       saving = false;
-    } catch (e) { showToast("Save failed", "error"); btn.textContent = " Save Lead"; btn.style.opacity = "1"; saving = false; }
+      window.__naggarSaving = false;
+    } catch (e) { showToast("Save failed", "error"); btn.textContent = " Save Lead"; btn.style.opacity = "1"; saving = false; window.__naggarSaving = false; }
   };
   return btn;
 }
@@ -535,13 +539,14 @@ function placeSearchButton() {
   btn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.25)";
   let saving = false;
   btn.onclick = async () => {
-    if (saving) return;
+    if (saving || window.__naggarSaving) return;
     saving = true;
+    window.__naggarSaving = true;
     btn.textContent = " Scanning...";
     btn.style.opacity = "0.6";
     try {
       const leads = extractSearchResults();
-      if (leads.length === 0) { showToast("No profiles found on this page", "info"); saving = false; btn.textContent = " Save All Visible"; btn.style.opacity = "1"; return; }
+      if (leads.length === 0) { showToast("No profiles found on this page", "info"); saving = false; window.__naggarSaving = false; btn.textContent = " Save All Visible"; btn.style.opacity = "1"; return; }
       btn.textContent = ` Saving ${leads.length}...`;
       const result = await saveLeads(leads);
       showToast(`Saved ${result.saved} leads (${result.total} total)`, "success");
@@ -549,13 +554,15 @@ function placeSearchButton() {
       setTimeout(() => { btn.textContent = " Save All Visible"; }, 2000);
       btn.style.opacity = "1";
       saving = false;
-    } catch (e) { showToast("Batch save failed", "error"); btn.textContent = " Save All Visible"; btn.style.opacity = "1"; saving = false; }
+      window.__naggarSaving = false;
+    } catch (e) { showToast("Batch save failed", "error"); btn.textContent = " Save All Visible"; btn.style.opacity = "1"; saving = false; window.__naggarSaving = false; }
   };
   document.body.appendChild(btn);
 }
 
 // ─── Inject buttons ───
 function injectButtons() {
+  if (window.__naggarSaving) { setTimeout(injectButtons, 2000); return; }
   const isProfile = window.location.href.includes("/in/");
   const isSearch = window.location.href.includes("/search/results/");
 
@@ -563,7 +570,7 @@ function injectButtons() {
   if (isProfile) {
     if (!placeProfileButton()) {
       let attempts = 0;
-      const retry = setInterval(() => { attempts++; if (placeProfileButton() || attempts >= 10) clearInterval(retry); }, 1000);
+      const retry = setInterval(() => { attempts++; if (attempts >= 10) clearInterval(retry); if (window.__naggarSaving) return; placeProfileButton() || clearInterval(retry); }, 1000);
     }
   }
 
