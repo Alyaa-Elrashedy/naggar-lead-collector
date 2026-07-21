@@ -1,13 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Naggar Lead Collector",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Save LinkedIn profiles as leads — exports to CSV, no server needed",
   "permissions": ["storage", "downloads"],
   "host_permissions": ["https://www.linkedin.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Naggar Leads"
+    "default_title": "Naggar Leads",
+    "default_icon": "icon.png"
   },
   "content_scripts": [
     {

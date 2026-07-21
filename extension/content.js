@@ -207,6 +207,32 @@ Naggar Analytics
 nora@naggar.ai`;
 }
 
+// ─── Toast notification system ───
+function injectToast() {
+  if (document.getElementById("naggar-toast")) return;
+  const el = document.createElement("div");
+  el.id = "naggar-toast";
+  el.style.cssText = "position:fixed;top:16px;right:16px;z-index:9999999;display:flex;flex-direction:column;gap:8px;pointer-events:none";
+  document.body.appendChild(el);
+}
+function showToast(msg, type) {
+  injectToast();
+  const t = document.createElement("div");
+  t.style.cssText = "padding:10px 16px;border-radius:8px;font-size:13px;font-family:-apple-system,sans-serif;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:naggarFadeIn 0.3s ease;pointer-events:auto;max-width:320px;word-break:break-word;background:" + (type === "error" ? "#dc3545" : type === "info" ? "#0a66c2" : "#28a745") + ";color:#fff";
+  t.textContent = msg;
+  document.getElementById("naggar-toast").appendChild(t);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity 0.4s"; setTimeout(() => t.remove(), 400); }, 2800);
+}
+const styleSheet = document.createElement("style");
+styleSheet.textContent = "@keyframes naggarFadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}";
+document.head.appendChild(styleSheet);
+
+// ─── Update badge count ───
+async function updateBadge() {
+  const leads = await getLeads();
+  try { chrome.runtime.sendMessage({ action: "updateBadge", count: leads.length }); } catch(e) {}
+}
+
 // ─── Sanitize fields for CSV injection prevention ───
 function sanitizeField(val) {
   if (!val) return "";
@@ -393,6 +419,7 @@ async function saveLeads(newLeads) {
     }
   }
   await new Promise(resolve => chrome.storage.local.set({ [STORAGE_KEY]: existing }, resolve));
+  updateBadge();
   return { saved: added, total: existing.length };
 }
 
@@ -405,15 +432,17 @@ function createSaveLeadBtn() {
   btn.onclick = async () => {
     if (saving) return;
     saving = true;
-    btn.disabled = true;
+    btn.textContent = "⏳";
+    btn.style.opacity = "0.6";
     try {
       const data = extractProfile();
-      if (!data || !data.full_name) { console.debug("Naggar: no data extracted"); btn.disabled = false; saving = false; return; }
-      btn.textContent = "⏳ Saving...";
+      if (!data || !data.full_name) { showToast("No profile data found", "error"); saving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
       const result = await saveLeads([data]);
-      btn.textContent = ` Saved! (${result.total} total)`;
-      setTimeout(() => { btn.textContent = " Save Lead"; btn.disabled = false; saving = false; }, 2000);
-    } catch (e) { console.debug("Naggar: save error", e); btn.disabled = false; saving = false; }
+      showToast(`Saved: ${data.full_name}`, "success");
+      btn.textContent = " Save Lead";
+      btn.style.opacity = "1";
+      saving = false;
+    } catch (e) { showToast("Save failed", "error"); btn.textContent = " Save Lead"; btn.style.opacity = "1"; saving = false; }
   };
   return btn;
 }
@@ -448,15 +477,18 @@ function placeSearchButton() {
   btn.onclick = async () => {
     if (saving) return;
     saving = true;
-    btn.disabled = true;
+    btn.textContent = " Scanning...";
+    btn.style.opacity = "0.6";
     try {
       const leads = extractSearchResults();
-      if (leads.length === 0) { console.debug("Naggar: no profiles found"); btn.disabled = false; saving = false; return; }
-      btn.textContent = `⏳ Saving ${leads.length}...`;
+      if (leads.length === 0) { showToast("No profiles found on this page", "info"); saving = false; btn.textContent = " Save All Visible"; btn.style.opacity = "1"; return; }
+      btn.textContent = ` Saving ${leads.length}...`;
       const result = await saveLeads(leads);
-      btn.textContent = ` Saved ${result.saved}! (${result.total} total)`;
-      setTimeout(() => { btn.textContent = " Save All Visible"; btn.disabled = false; saving = false; }, 3000);
-    } catch (e) { console.debug("Naggar: save batch error", e); btn.disabled = false; saving = false; }
+      showToast(`Saved ${result.saved} new leads`, "success");
+      btn.textContent = " Save All Visible";
+      btn.style.opacity = "1";
+      saving = false;
+    } catch (e) { showToast("Batch save failed", "error"); btn.textContent = " Save All Visible"; btn.style.opacity = "1"; saving = false; }
   };
   document.body.appendChild(btn);
 }
