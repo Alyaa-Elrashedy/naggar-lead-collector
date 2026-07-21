@@ -121,15 +121,23 @@
   <div class="panel" id="panel-settings">
     <!-- Custom Queries -->
     <div class="card">
-      <div class="section-title">Custom Search Queries</div>
+      <div class="section-title">Add Profile to My Leads</div>
+      <p style="font-size:11px;color:#555;margin-bottom:8px">Paste a LinkedIn profile URL to add it directly to your leads list.</p>
       <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="text" id="customQueryInput" placeholder="Paste LinkedIn search URL here..." style="flex:1">
+        <input type="text" id="profileUrlInput" placeholder="https://www.linkedin.com/in/..." style="flex:1">
+        <button class="btn-success" id="addProfileBtn" style="white-space:nowrap">+ Add Lead</button>
+      </div>
+      <div id="profileUrlStatus" style="font-size:11px;color:#666;min-height:20px"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Add Search Query to Auto Discover</div>
+      <p style="font-size:11px;color:#555;margin-bottom:8px">Paste a LinkedIn People Search URL to add it to the Auto Discover tab.</p>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="text" id="customQueryInput" placeholder="https://www.linkedin.com/search/results/people/?keywords=..." style="flex:1">
         <button class="btn-success" id="addQueryBtn" style="white-space:nowrap">+ Add</button>
       </div>
       <div id="customQueriesList" class="pill-list"></div>
-      <div style="font-size:10px;color:#888;margin-top:6px">
-        Go to LinkedIn → search people → copy the URL → paste here. Custom queries appear in Auto Discover.
-      </div>
     </div>
 
     <!-- Data Management -->

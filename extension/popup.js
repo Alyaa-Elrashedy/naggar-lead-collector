@@ -297,7 +297,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Auto Discover tab
   await renderQueries();
 
-  // Add custom query or profile URL
+  // Add profile URL → save as lead
+  $("addProfileBtn").addEventListener("click", async () => {
+    const input = $("profileUrlInput");
+    const url = input.value.trim();
+    if (!url) { $("profileUrlStatus").textContent = "Paste a URL first"; $("profileUrlStatus").style.color = "#dc3545"; return; }
+    if (!url.includes("linkedin.com/in/")) {
+      $("profileUrlStatus").textContent = "Must be a LinkedIn profile URL (linkedin.com/in/...)";
+      $("profileUrlStatus").style.color = "#dc3545";
+      return;
+    }
+    const cleanUrl = url.split("?")[0];
+    const uname = cleanUrl.match(/linkedin\.com\/in\/([^/?]+)/);
+    const name = uname ? decodeURIComponent(uname[1]).replace(/[-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Unknown";
+
+    const curr = await getLeads();
+    if (curr.some(l => l.profile_url === cleanUrl)) {
+      $("profileUrlStatus").textContent = "This profile is already saved";
+      $("profileUrlStatus").style.color = "#dc3545";
+      return;
+    }
+
+    curr.push({
+      date_discovered: new Date().toISOString().split("T")[0],
+      source: "manual_url",
+      profile_url: cleanUrl,
+      full_name: name,
+      title: "",
+      company_institution: "",
+      location: "",
+      "email/Contact": "",
+      linkedin_username: uname ? uname[1] : "",
+      profile_type: "academic_researcher",
+      pain_points_identified: "",
+      value_proposition: "",
+      outreach_template_used: "researcher_cold",
+      outreach_message: "",
+      outreach_status: "pending",
+      outreach_date: "",
+      follow_up_date: "",
+      response: "",
+      converted: "",
+      revenue_potential: "",
+      notes: "Added via URL — visit profile to auto-fill",
+      score: 50,
+    });
+    await setLeads(curr);
+    input.value = "";
+    $("profileUrlStatus").textContent = `Saved: ${name}`;
+    $("profileUrlStatus").style.color = "#28a745";
+    renderLeads();
+  });
+
+  // Add search query → save as custom query
   $("addQueryBtn").addEventListener("click", async () => {
     const input = $("customQueryInput");
     const url = input.value.trim();
@@ -329,9 +381,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     status($("statusSettings"), `Added: ${label}`);
   });
 
-  $("customQueryInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") $("addQueryBtn").click();
-  });
+  $("profileUrlInput").addEventListener("keydown", e => { if (e.key === "Enter") $("addProfileBtn").click(); });
+  $("customQueryInput").addEventListener("keydown", e => { if (e.key === "Enter") $("addQueryBtn").click(); });
 
   // Settings - Import/Export
   $("exportJsonBtn").addEventListener("click", async () => {
