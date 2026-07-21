@@ -462,11 +462,12 @@ function createSaveLeadBtn() {
     btn.style.opacity = "0.6";
     try {
       const data = extractProfile();
-      if (!data || !data.full_name) { showToast("No profile data found", "error"); saving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
+      if (!data || !data.full_name) { showToast("No profile data found — try scrolling or refreshing", "error"); saving = false; btn.textContent = " Save Lead"; btn.style.opacity = "1"; return; }
       const result = await saveLeads([data]);
       const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
       showToast(`Saved: ${info}`, "success");
-      btn.textContent = " Save Lead";
+      btn.textContent = ` ${result.total} Saved`;
+      setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
       btn.style.opacity = "1";
       saving = false;
     } catch (e) { showToast("Save failed", "error"); btn.textContent = " Save Lead"; btn.style.opacity = "1"; saving = false; }
@@ -522,6 +523,8 @@ function placeSearchButton() {
       btn.textContent = ` Saving ${leads.length}...`;
       const result = await saveLeads(leads);
       showToast(`Saved ${result.saved} leads (${result.total} total)`, "success");
+      btn.textContent = ` ${result.total} Total`;
+      setTimeout(() => { btn.textContent = " Save All Visible"; }, 2000);
       btn.textContent = " Save All Visible";
       btn.style.opacity = "1";
       saving = false;
