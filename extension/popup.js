@@ -1,18 +1,32 @@
 const STORAGE_KEY = "naggar_leads";
+const CUSTOM_QUERIES_KEY = "naggar_custom_queries";
 
 function $(id) { return document.getElementById(id); }
 
-function status(el, msg, isError = false) {
+function status(el, msg, isError) {
   el.textContent = msg;
   el.style.color = isError ? "#dc3545" : "#666";
 }
 
 async function getLeads() {
   return new Promise(resolve => {
-    chrome.storage.local.get([STORAGE_KEY], result => {
-      resolve(result[STORAGE_KEY] || []);
-    });
+    chrome.storage.local.get([STORAGE_KEY], result => resolve(result[STORAGE_KEY] || []));
   });
+}
+
+async function setLeads(leads) {
+  await new Promise(resolve => chrome.storage.local.set({ [STORAGE_KEY]: leads }, resolve));
+  try { chrome.runtime.sendMessage({ action: "updateBadge", count: leads.length }); } catch(e) {}
+}
+
+async function getCustomQueries() {
+  return new Promise(resolve => {
+    chrome.storage.local.get([CUSTOM_QUERIES_KEY], result => resolve(result[CUSTOM_QUERIES_KEY] || []));
+  });
+}
+
+async function setCustomQueries(qs) {
+  await new Promise(resolve => chrome.storage.local.set({ [CUSTOM_QUERIES_KEY]: qs }, resolve));
 }
 
 const TYPE_COLORS = {
@@ -23,12 +37,25 @@ const TYPE_COLORS = {
   ambassador: "badge-ambassador",
 };
 const TYPE_LABELS = {
-  academic_researcher: "Researcher",
+  academic_researcher: "Academic",
   university_admin: "Admin",
   global_pharma: "Pharma",
   partnership_target: "Partner",
   ambassador: "Ambassador",
 };
+const TYPE_PILL_COLORS = {
+  academic_researcher: "background:#e3f2fd;color:#1565c0",
+  university_admin: "background:#f3e5f5;color:#7b1fa2",
+  global_pharma: "background:#e8f5e9;color:#2e7d32",
+  partnership_target: "background:#fff3e0;color:#e65100",
+  ambassador: "background:#fce4ec;color:#c62828",
+};
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 function downloadCSV(leads) {
   if (leads.length === 0) { status($("statusLeads"), "No leads to export"); return; }
@@ -57,15 +84,10 @@ function downloadCSV(leads) {
   status($("statusLeads"), `Downloaded ${leads.length} leads`);
 }
 
-function escapeHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-function renderLeads(leads) {
+// ─── Render leads tab ───
+async function renderLeads() {
+  const leads = await getLeads();
   $("leadCount").textContent = leads.length;
-  // Update badge
   try { chrome.runtime.sendMessage({ action: "updateBadge", count: leads.length }); } catch(e) {}
 
   // Type breakdown
@@ -75,27 +97,45 @@ function renderLeads(leads) {
     counts[t] = (counts[t] || 0) + 1;
   }
   $("typeBreakdown").innerHTML = Object.entries(counts).map(([type, count]) =>
-    `<span class="type-pill ${TYPE_COLORS[type] || ""}">${TYPE_LABELS[type] || type}: ${count}</span>`
+    `<span class="type-pill" style="${TYPE_PILL_COLORS[type] || ""}">${TYPE_LABELS[type] || type}: ${count}</span>`
   ).join("");
 
-  // Recent leads (last 5, newest first)
-  const recent = leads.slice(-5).reverse();
-  if (recent.length === 0) {
-    $("recentList").innerHTML = '<div class="empty-state">No leads yet. Go to LinkedIn and click "Save Lead"</div>';
+  // Full lead list with delete
+  if (leads.length === 0) {
+    $("leadList").innerHTML = '<div class="empty-state">No leads yet. Go to LinkedIn and click "Save Lead"</div>';
+    $("leadSubCount").textContent = "";
   } else {
-    $("recentList").innerHTML = recent.map(l => {
+    $("leadSubCount").textContent = `(${leads.length} total)`;
+    $("leadList").innerHTML = leads.map((l, i) => {
       const typeClass = TYPE_COLORS[l.profile_type] || "";
       const typeLabel = TYPE_LABELS[l.profile_type] || l.profile_type || "";
-      return `<div class="recent-item">
-        <div class="recent-name">${escapeHtml(l.full_name || "Unknown")}</div>
-        <div class="recent-title">${escapeHtml(l.title || "")}</div>
-        <div class="recent-meta">
-          <span class="badge ${typeClass}">${typeLabel}</span>
-          <span>Score: ${l.score || "—"}</span>
-          <span>${escapeHtml(l.company_institution || "")}</span>
+      return `<div class="list-item">
+        <div class="item-main">
+          <div class="item-name">${escapeHtml(l.full_name || "Unknown")}</div>
+          <div class="item-title">${escapeHtml(l.title || "")}</div>
+          <div class="item-meta">
+            <span class="badge ${typeClass}">${typeLabel}</span>
+            <span>Score: ${l.score || "—"}</span>
+            <span>${escapeHtml(l.company_institution || "")}</span>
+          </div>
         </div>
+        <button class="btn-danger-sm" data-idx="${i}">Delete</button>
       </div>`;
     }).join("");
+
+    // Delete handlers
+    $("leadList").querySelectorAll(".btn-danger-sm").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const idx = parseInt(btn.dataset.idx);
+        const curr = await getLeads();
+        const name = curr[idx]?.full_name || "this lead";
+        if (!confirm(`Delete ${name}?`)) return;
+        curr.splice(idx, 1);
+        await setLeads(curr);
+        renderLeads();
+        status($("statusLeads"), `Deleted: ${name}`);
+      });
+    });
   }
 }
 
@@ -106,14 +146,111 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     tab.classList.add("active");
     $(`panel-${tab.dataset.tab}`).classList.add("active");
-    if (tab.dataset.tab === "leads") getLeads().then(renderLeads);
+    if (tab.dataset.tab === "leads") renderLeads();
+    if (tab.dataset.tab === "discover") renderQueries();
+    if (tab.dataset.tab === "settings") renderCustomQueries();
   });
 });
 
+// ─── Built-in queries ───
+const BUILT_IN_QUERIES = [
+  {label:"Professors - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20professor"},
+  {label:"Professors - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20professor"},
+  {label:"Professors - Public Health",url:"https://www.linkedin.com/search/results/people/?keywords=public%20health%20professor"},
+  {label:"PhD Candidates - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20PhD%20candidate"},
+  {label:"Postdoctoral Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=postdoctoral%20researcher%20biostatistics"},
+  {label:"Research Scientists",url:"https://www.linkedin.com/search/results/people/?keywords=bioinformatics%20research%20scientist"},
+  {label:"Medical Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=medical%20researcher"},
+  {label:"Clinical Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=clinical%20researcher"},
+  {label:"Deans - Research",url:"https://www.linkedin.com/search/results/people/?keywords=dean%20of%20research"},
+  {label:"Research Center Directors",url:"https://www.linkedin.com/search/results/people/?keywords=research%20center%20director"},
+  {label:"VPs - Research",url:"https://www.linkedin.com/search/results/people/?keywords=vice%20president%20research"},
+  {label:"Lab Directors",url:"https://www.linkedin.com/search/results/people/?keywords=lab%20director%20university"},
+  {label:"Biostatisticians - Pharma",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistician%20pharmaceutical"},
+  {label:"Clinical Trial Managers",url:"https://www.linkedin.com/search/results/people/?keywords=clinical%20trial%20manager"},
+  {label:"Medical Affairs Directors",url:"https://www.linkedin.com/search/results/people/?keywords=medical%20affairs%20director"},
+  {label:"CRO - Business Development",url:"https://www.linkedin.com/search/results/people/?keywords=CRO%20business%20development"},
+  {label:"Biotech Founders",url:"https://www.linkedin.com/search/results/people/?keywords=biotech%20founder"},
+  {label:"Biostatistics Directors",url:"https://www.linkedin.com/search/results/people/?keywords=director%20biostatistics"},
+  {label:"CEOs - Research Services",url:"https://www.linkedin.com/search/results/people/?keywords=CEO%20research%20services"},
+  {label:"Consortium Leaders",url:"https://www.linkedin.com/search/results/people/?keywords=research%20consortium%20leader"},
+  {label:"Saudi - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=101282733"},
+  {label:"Saudi - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101282733"},
+  {label:"KAUST - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=KAUST%20researcher"},
+  {label:"UAE - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=101194590"},
+  {label:"UAE - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101194590"},
+  {label:"Egypt - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=102100715"},
+  {label:"Egypt - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=102100715"},
+  {label:"USA - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20professor&geoUrn=103644278"},
+  {label:"USA - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20researcher&geoUrn=103644278"},
+  {label:"UK - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20researcher&geoUrn=101165590"},
+  {label:"UK - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20researcher&geoUrn=101165590"},
+  {label:"Germany - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101282230"},
+  {label:"Graduate Students",url:"https://www.linkedin.com/search/results/people/?keywords=master%20student%20biostatistics"},
+  {label:"Research Assistants",url:"https://www.linkedin.com/search/results/people/?keywords=research%20assistant%20biostatistics"},
+];
+
+async function renderQueries() {
+  const custom = await getCustomQueries();
+  const all = [...BUILT_IN_QUERIES, ...custom.map((q, i) => ({ ...q, isCustom: true, idx: i }))];
+  $("queryList").innerHTML = all.length === 0
+    ? '<div class="empty-state">No queries</div>'
+    : all.map((q, i) =>
+        `<div class="list-item">
+          <div class="item-main">
+            <div class="item-name">${escapeHtml(q.label)}</div>
+            <div class="item-title" style="font-size:9px;color:#aaa">${q.isCustom ? "Custom" : "Built-in"}</div>
+          </div>
+          <button class="q-open" data-idx="${i}" data-url="${escapeHtml(q.url)}" style="font-size:10px;color:#0a66c2;background:#e8f0fe;padding:2px 10px;border-radius:10px;cursor:pointer;border:none;font-weight:600">Open</button>
+        </div>`
+      ).join("");
+
+  $("queryList").querySelectorAll(".q-open").forEach(btn => {
+    btn.addEventListener("click", () => {
+      chrome.tabs.create({ url: btn.dataset.url });
+      btn.textContent = "Opened";
+      btn.style.opacity = "0.5";
+      status($("statusDiscover"), `Opened query`);
+    });
+  });
+
+  $("openAllBtn").onclick = () => {
+    all.forEach(q => chrome.tabs.create({ url: q.url }));
+    status($("statusDiscover"), `Opened ${all.length} tabs`);
+  };
+  $("hideOpenedBtn").onclick = () => {
+    let h = 0;
+    $("queryList").querySelectorAll(".q-open").forEach(b => { if (b.textContent === "Opened" || b.style.opacity === "0.5") { b.closest(".list-item").style.display = "none"; h++; } });
+    status($("statusDiscover"), `Hidden ${h}`);
+  };
+}
+
+// ─── Custom queries (Settings) ───
+async function renderCustomQueries() {
+  const custom = await getCustomQueries();
+  if (custom.length === 0) {
+    $("customQueriesList").innerHTML = '<span style="font-size:11px;color:#999">No custom queries yet</span>';
+  } else {
+    $("customQueriesList").innerHTML = custom.map((q, i) =>
+      `<span class="query-pill">${escapeHtml(q.label)} <span class="remove" data-cq="${i}">x</span></span>`
+    ).join("");
+    $("customQueriesList").querySelectorAll(".remove").forEach(el => {
+      el.addEventListener("click", async () => {
+        const idx = parseInt(el.dataset.cq);
+        const curr = await getCustomQueries();
+        curr.splice(idx, 1);
+        await setCustomQueries(curr);
+        renderCustomQueries();
+        renderQueries();
+        status($("statusSettings"), "Query removed");
+      });
+    });
+  }
+}
+
 // ─── Init ───
 document.addEventListener("DOMContentLoaded", async () => {
-  const leads = await getLeads();
-  renderLeads(leads);
+  await renderLeads();
 
   // Download
   $("downloadBtn").addEventListener("click", () => getLeads().then(downloadCSV));
@@ -124,9 +261,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const curr = await getLeads();
     if (curr.length === 0) { status($("statusLeads"), "No leads to clear"); return; }
     if (!confirm(`Delete all ${curr.length} leads?`)) return;
-    await new Promise(resolve => chrome.storage.local.set({ [STORAGE_KEY]: [] }, resolve));
-    try { chrome.runtime.sendMessage({ action: "updateBadge", count: 0 }); } catch(e) {}
-    renderLeads([]);
+    await setLeads([]);
+    renderLeads();
     status($("statusLeads"), "All leads cleared");
   }
   $("clearBtn").addEventListener("click", clearAll);
@@ -141,7 +277,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     chrome.tabs.sendMessage(tabs[0].id, { action: "extractCurrent" }, async response => {
       if (!response || !response.lead || !response.lead.full_name) {
-        status($("statusLeads"), "Go to a LinkedIn profile page first", true);
+        status($("statusLeads"), "Go to a LinkedIn profile", true);
         return;
       }
       const lead = response.lead;
@@ -151,92 +287,47 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       curr.push(lead);
-      await new Promise(resolve => chrome.storage.local.set({ [STORAGE_KEY]: curr }, resolve));
-      renderLeads(curr);
+      await setLeads(curr);
+      renderLeads();
       status($("statusLeads"), `Saved: ${lead.full_name}`);
     });
   });
 
-  // ─── AUTO DISCOVER ───
-  const queries = [
-    {label:"Professors - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20professor"},
-    {label:"Professors - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20professor"},
-    {label:"Professors - Public Health",url:"https://www.linkedin.com/search/results/people/?keywords=public%20health%20professor"},
-    {label:"PhD Candidates - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20PhD%20candidate"},
-    {label:"PhD Candidates - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20PhD%20candidate"},
-    {label:"Postdoctoral Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=postdoctoral%20researcher%20biostatistics"},
-    {label:"Research Scientists - Bioinformatics",url:"https://www.linkedin.com/search/results/people/?keywords=bioinformatics%20research%20scientist"},
-    {label:"Medical Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=medical%20researcher"},
-    {label:"Clinical Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=clinical%20researcher"},
-    {label:"Deans - Research",url:"https://www.linkedin.com/search/results/people/?keywords=dean%20of%20research"},
-    {label:"Research Center Directors",url:"https://www.linkedin.com/search/results/people/?keywords=research%20center%20director"},
-    {label:"VPs - Research",url:"https://www.linkedin.com/search/results/people/?keywords=vice%20president%20research%20university"},
-    {label:"Lab Directors",url:"https://www.linkedin.com/search/results/people/?keywords=lab%20director%20university"},
-    {label:"Department Chairs",url:"https://www.linkedin.com/search/results/people/?keywords=department%20chair%20biostatistics"},
-    {label:"Biostatisticians - Pharma",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistician%20pharmaceutical"},
-    {label:"Clinical Trial Managers",url:"https://www.linkedin.com/search/results/people/?keywords=clinical%20trial%20manager"},
-    {label:"Clinical Research Associates",url:"https://www.linkedin.com/search/results/people/?keywords=clinical%20research%20associate"},
-    {label:"Medical Affairs Directors",url:"https://www.linkedin.com/search/results/people/?keywords=medical%20affairs%20director"},
-    {label:"CRO - Business Development",url:"https://www.linkedin.com/search/results/people/?keywords=CRO%20business%20development"},
-    {label:"Pharma R&D Managers",url:"https://www.linkedin.com/search/results/people/?keywords=pharma%20R%26D%20manager"},
-    {label:"Biotech Founders",url:"https://www.linkedin.com/search/results/people/?keywords=biotech%20founder"},
-    {label:"Biostatistics Directors",url:"https://www.linkedin.com/search/results/people/?keywords=director%20biostatistics"},
-    {label:"Co-Founders - HealthTech",url:"https://www.linkedin.com/search/results/people/?keywords=healthtech%20co-founder"},
-    {label:"CEOs - Research Services",url:"https://www.linkedin.com/search/results/people/?keywords=CEO%20research%20services"},
-    {label:"Capacity Building - Research",url:"https://www.linkedin.com/search/results/people/?keywords=research%20capacity%20building"},
-    {label:"Consortium Leaders",url:"https://www.linkedin.com/search/results/people/?keywords=research%20consortium%20leader"},
-    {label:"Saudi - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=101282733"},
-    {label:"Saudi - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101282733"},
-    {label:"Saudi - PhD Candidates",url:"https://www.linkedin.com/search/results/people/?keywords=PhD%20candidate&geoUrn=101282733"},
-    {label:"KAUST - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=KAUST%20researcher"},
-    {label:"UAE - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=101194590"},
-    {label:"UAE - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101194590"},
-    {label:"Egypt - Professors",url:"https://www.linkedin.com/search/results/people/?keywords=professor&geoUrn=102100715"},
-    {label:"Egypt - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=102100715"},
-    {label:"USA - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20professor&geoUrn=103644278"},
-    {label:"USA - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20researcher&geoUrn=103644278"},
-    {label:"UK - Biostatistics",url:"https://www.linkedin.com/search/results/people/?keywords=biostatistics%20researcher&geoUrn=101165590"},
-    {label:"UK - Epidemiology",url:"https://www.linkedin.com/search/results/people/?keywords=epidemiology%20researcher&geoUrn=101165590"},
-    {label:"Germany - Researchers",url:"https://www.linkedin.com/search/results/people/?keywords=researcher&geoUrn=101282230"},
-    {label:"Graduate Students",url:"https://www.linkedin.com/search/results/people/?keywords=master%20student%20biostatistics"},
-    {label:"Research Assistants",url:"https://www.linkedin.com/search/results/people/?keywords=research%20assistant%20biostatistics"},
-  ];
+  // Auto Discover tab
+  await renderQueries();
 
-  function renderQueries(list) {
-    $("queryList").innerHTML = list.map((q, i) =>
-      `<div class="query-item" data-idx="${i}">
-        <span class="q-label">${q.label}</span>
-        <span class="q-open">Open</span>
-      </div>`
-    ).join("");
-    $("queryList").querySelectorAll(".query-item").forEach(el => {
-      const idx = parseInt(el.dataset.idx);
-      el.querySelector(".q-open").addEventListener("click", (e) => {
-        e.stopPropagation();
-        chrome.tabs.create({ url: queries[idx].url });
-        el.style.opacity = "0.4";
-        status($("statusDiscover"), `Opened: ${queries[idx].label}`);
-      });
-    });
-  }
+  // Add custom query
+  $("addQueryBtn").addEventListener("click", async () => {
+    const input = $("customQueryInput");
+    const url = input.value.trim();
+    if (!url) { status($("statusSettings"), "Paste a LinkedIn URL first", true); return; }
+    if (!url.includes("linkedin.com/search/results/people")) {
+      status($("statusSettings"), "Must be a LinkedIn People Search URL", true);
+      return;
+    }
+    // Extract a label from the URL
+    let label = "Custom";
+    const m = url.match(/keywords=([^&]+)/);
+    if (m) label = decodeURIComponent(m[1]).replace(/\+/g, " ").replace(/%20/g, " ").substring(0, 40);
+    const geo = url.match(/geoUrn=(\d+)/);
+    const locNames = { "101282733": "Saudi", "101194590": "UAE", "102100715": "Egypt", "103644278": "USA", "101165590": "UK", "101282230": "Germany" };
+    if (geo && locNames[geo[1]]) label += ` (${locNames[geo[1]]})`;
 
-  renderQueries(queries);
-  status($("statusDiscover"), `${queries.length} search queries ready`);
-
-  $("openAllBtn").addEventListener("click", () => {
-    queries.forEach(q => chrome.tabs.create({ url: q.url }));
-    status($("statusDiscover"), `Opened ${queries.length} tabs`);
+    const curr = await getCustomQueries();
+    if (curr.some(q => q.url === url)) { status($("statusSettings"), "This query already exists"); return; }
+    curr.push({ label, url });
+    await setCustomQueries(curr);
+    input.value = "";
+    renderCustomQueries();
+    renderQueries();
+    status($("statusSettings"), `Added: ${label}`);
   });
 
-  $("hideOpenedBtn").addEventListener("click", () => {
-    let hidden = 0;
-    $("queryList").querySelectorAll(".query-item").forEach(el => {
-      if (el.style.opacity === "0.4") { el.style.display = "none"; hidden++; }
-    });
-    status($("statusDiscover"), `Hidden ${hidden}`);
+  $("customQueryInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") $("addQueryBtn").click();
   });
 
-  // ─── SETTINGS ───
+  // Settings - Import/Export
   $("exportJsonBtn").addEventListener("click", async () => {
     const all = await getLeads();
     if (all.length === 0) { status($("statusSettings"), "No leads to export"); return; }
@@ -247,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     a.download = `naggar_backup_${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    status($("statusSettings"), `Exported ${all.length} leads as JSON`);
+    status($("statusSettings"), `Exported ${all.length} leads`);
   });
 
   $("importJsonBtn").addEventListener("click", () => {
@@ -260,7 +351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         const text = await file.text();
         const imported = JSON.parse(text);
-        if (!Array.isArray(imported)) throw new Error("Invalid format");
+        if (!Array.isArray(imported)) throw new Error("Invalid");
         const curr = await getLeads();
         const existingUrls = new Set(curr.map(l => l.profile_url));
         let added = 0;
@@ -271,12 +362,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             added++;
           }
         }
-        await new Promise(resolve => chrome.storage.local.set({ [STORAGE_KEY]: curr }, resolve));
-        status($("statusSettings"), `Imported ${added} new leads (${imported.length - added} duplicates skipped)`);
-        renderLeads(curr);
-      } catch (err) {
-        status($("statusSettings"), "Import failed: invalid file", true);
-      }
+        await setLeads(curr);
+        renderLeads();
+        status($("statusSettings"), `Imported ${added} new leads`);
+      } catch { status($("statusSettings"), "Import failed", true); }
     };
     input.click();
   });

@@ -290,18 +290,30 @@ function extractProfile() {
   const url = window.location.href.split("?")[0];
   if (!url.includes("/in/")) return null;
 
-  // Try multiple selectors for name (LinkedIn changes layout often)
+  // Try multiple selectors for name
   const nameSelectors = [
-    "h1",
-    "h2",
+    "h1", "h2",
     "[class*='profile-name']",
     "[class*='inline-show-more-text']",
     "[class*='text-heading-xlarge']",
+    "[class*='text-heading-large']",
   ];
   let name = "";
   for (const sel of nameSelectors) {
     const el = document.querySelector(sel);
     if (el && el.innerText.trim().length > 2) { name = el.innerText.trim(); break; }
+  }
+  // Fallback: find any visible large text that looks like a name (2+ capitalized words)
+  if (!name) {
+    for (const el of document.querySelectorAll("main span, main div")) {
+      const t = el.innerText.trim();
+      if (t.length > 4 && t.length < 60 && /^[A-Z][a-z]+ [A-Z]/.test(t) && !t.includes("\n")) {
+        // Check parent for the typical profile card structure
+        let p = el.parentElement;
+        for (let i = 0; i < 4; i++) { if (p) p = p.parentElement; }
+        if (p && (p.offsetWidth > 200 || p.classList.length > 3)) { name = t; break; }
+      }
+    }
   }
 
   // Title / headline
@@ -317,7 +329,7 @@ function extractProfile() {
     if (el && el.innerText.trim().length > 3) { title = el.innerText.trim(); break; }
   }
 
-  // Company from experience section
+  // Company from experience section or near top of profile
   let company = "";
   const expSec = document.querySelector("section:has(#experience)");
   if (expSec) {
@@ -327,13 +339,21 @@ function extractProfile() {
       if (parts.length > 1) { company = parts[1]; break; }
     }
   }
+  if (!company) {
+    // Try near the top card
+    const topEls = document.querySelectorAll("[class*='top-card'] a, [class*='pv-top-card'] a");
+    for (const el of topEls) {
+      const t = el.innerText.trim();
+      if (t && t.length > 2 && t.length < 80 && !t.includes("linkedin") && !t.includes("http")) { company = t; break; }
+    }
+  }
 
-  // Location — look near the top of the page only
+  // Location — look near top of page only
   let location = "";
-  const locCandidates = document.querySelectorAll("[class*='pv-text-details'] span, [class*='top-card'] span, [class*='location']");
+  const locCandidates = document.querySelectorAll("[class*='pv-text-details'] span, [class*='top-card'] span, [class*='location'], [class*='text-body-small']");
   for (const el of locCandidates) {
     const t = el.innerText.trim();
-    if (t && t.length > 3 && t.length < 80 && /[a-zA-Z]/.test(t) && (t.includes(",") || /(University|City|Region|State|Egypt|Riyadh|Dubai|Cairo|Jeddah|Doha)/i.test(t))) {
+    if (t && t.length > 3 && t.length < 80 && /[a-zA-Z]/.test(t) && (t.includes(",") || /(University|City|Region|Egypt|Riyadh|Dubai|Cairo|Jeddah|Doha)/i.test(t))) {
       location = t; break;
     }
   }
@@ -512,7 +532,7 @@ function injectButtons() {
 }
 
 // ─── Run ───
-setTimeout(injectButtons, 1500);
+setTimeout(() => { injectButtons(); updateBadge(); }, 1500);
 
 // Handle LinkedIn SPA navigation (profile opens without full page load)
 let lastUrl = window.location.href;
