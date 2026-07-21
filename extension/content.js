@@ -494,11 +494,12 @@ function placeProfileButton() {
   return true;
 }
 
-// ─── Create "Save All Visible" button ───
+// ─── Create "Save All Visible" button (search results pages only) ───
 function placeSearchButton() {
-  const hasPeopleLinks = document.querySelectorAll("a[href*='/in/']").length > 5;
   const isSearch = window.location.href.includes("/search/results/");
-  if (!isSearch && !hasPeopleLinks) return;
+  if (!isSearch) return;
+  // Also check we're NOT on a profile page
+  if (window.location.href.includes("/in/")) return;
   document.querySelectorAll("#naggar-search-btn").forEach(e => e.remove());
   const btn = document.createElement("button");
   btn.id = "naggar-search-btn";
@@ -533,28 +534,27 @@ function placeSearchButton() {
   document.body.appendChild(btn);
 }
 
-// ─── Inject buttons with retry for SPA-loaded profiles ───
+// ─── Inject buttons ───
 function injectButtons() {
-  // Always try search button (with retry for SPA navigation)
-  placeSearchButton();
-  let searchAttempts = 0;
-  const searchRetry = setInterval(() => {
-    searchAttempts++;
-    if (searchAttempts >= 8) clearInterval(searchRetry);
-    const btn = document.getElementById("naggar-search-btn");
-    if (!btn) placeSearchButton();
-    else clearInterval(searchRetry);
-  }, 1500);
+  const isProfile = window.location.href.includes("/in/");
+  const isSearch = window.location.href.includes("/search/results/");
 
-  // If on a profile page, try placing the button
-  if (window.location.href.includes("/in/")) {
+  // Profile page → Save Lead button
+  if (isProfile) {
     if (!placeProfileButton()) {
       let attempts = 0;
-      const retry = setInterval(() => {
-        attempts++;
-        if (placeProfileButton() || attempts >= 10) clearInterval(retry);
-      }, 1000);
+      const retry = setInterval(() => { attempts++; if (placeProfileButton() || attempts >= 10) clearInterval(retry); }, 1000);
     }
+  }
+
+  // Search results page → Save All Visible button
+  if (isSearch) {
+    placeSearchButton();
+    let attempts = 0;
+    const retry = setInterval(() => { attempts++; if (attempts >= 8) clearInterval(retry);
+      const btn = document.getElementById("naggar-search-btn");
+      if (!btn) placeSearchButton(); else clearInterval(retry);
+    }, 1500);
   }
 }
 
