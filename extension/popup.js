@@ -25,6 +25,8 @@ function downloadCSV(leads) {
   ];
   const rows = leads.map(l => headers.map(h => {
     let val = (l[h] || l[h.toLowerCase()] || "").toString();
+    val = val.replace(/<[^>]*>/g, "");
+    if (/^[=+\-@]/.test(val)) val = "'" + val;
     val = val.replace(/"/g, '""');
     if (val.includes(",") || val.includes("\n") || val.includes('"')) val = `"${val}"`;
     return val;

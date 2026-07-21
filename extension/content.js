@@ -207,6 +207,26 @@ Naggar Analytics
 nora@naggar.ai`;
 }
 
+// ─── Sanitize fields for CSV injection prevention ───
+function sanitizeField(val) {
+  if (!val) return "";
+  let s = val.toString();
+  // Strip HTML tags
+  s = s.replace(/<[^>]*>/g, "");
+  // CSV injection: if starts with =, +, -, @, @, prepend single quote
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s.trim();
+}
+
+function sanitizeLead(lead) {
+  const out = {};
+  for (const [k, v] of Object.entries(lead)) {
+    if (typeof v === "string") out[k] = sanitizeField(v);
+    else out[k] = v;
+  }
+  return out;
+}
+
 // ─── Build a complete lead object with all 22 columns ───
 function makeLead(data) {
   const type = data.profile_type || classifyTitle(data.title || "");
@@ -235,10 +255,12 @@ function makeLead(data) {
     notes: data.notes || "",
     score: score,
   };
+  return sanitizeLead(lead);
 }
 
 // ─── Extract profile from current page ───
 function extractProfile() {
+  try {
   const url = window.location.href.split("?")[0];
   if (!url.includes("/in/")) return null;
 
@@ -300,10 +322,12 @@ function extractProfile() {
     location: location,
     linkedin_username: username,
   });
+  } catch (e) { console.debug("Naggar: extractProfile error", e); return null; }
 }
 
 // ─── Extract from search results ───
 function extractSearchResults() {
+  try {
   const leads = [];
   const seen = new Set();
   const links = document.querySelectorAll("a[href*='/in/']");
@@ -345,6 +369,7 @@ function extractSearchResults() {
   });
 
   return leads;
+  } catch (e) { console.debug("Naggar: extractSearchResults error", e); return []; }
 }
 
 // ─── Storage helpers ───
@@ -376,13 +401,19 @@ function createSaveLeadBtn() {
   const btn = document.createElement("button");
   btn.id = "naggar-save-btn";
   btn.textContent = " Save Lead";
+  let saving = false;
   btn.onclick = async () => {
-    const data = extractProfile();
-    if (!data || !data.full_name) { alert("Could not extract profile data."); return; }
-    btn.textContent = "⏳ Saving...";
-    const result = await saveLeads([data]);
-    btn.textContent = ` Saved! (${result.total} total)`;
-    setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
+    if (saving) return;
+    saving = true;
+    btn.disabled = true;
+    try {
+      const data = extractProfile();
+      if (!data || !data.full_name) { console.debug("Naggar: no data extracted"); btn.disabled = false; saving = false; return; }
+      btn.textContent = "⏳ Saving...";
+      const result = await saveLeads([data]);
+      btn.textContent = ` Saved! (${result.total} total)`;
+      setTimeout(() => { btn.textContent = " Save Lead"; btn.disabled = false; saving = false; }, 2000);
+    } catch (e) { console.debug("Naggar: save error", e); btn.disabled = false; saving = false; }
   };
   return btn;
 }
@@ -413,13 +444,19 @@ function placeSearchButton() {
   const btn = document.createElement("button");
   btn.id = "naggar-search-btn";
   btn.textContent = " Save All Visible";
+  let saving = false;
   btn.onclick = async () => {
-    const leads = extractSearchResults();
-    if (leads.length === 0) { alert("No profiles found."); return; }
-    btn.textContent = `⏳ Saving ${leads.length}...`;
-    const result = await saveLeads(leads);
-    btn.textContent = ` Saved ${result.saved}! (${result.total} total)`;
-    setTimeout(() => { btn.textContent = " Save All Visible"; }, 3000);
+    if (saving) return;
+    saving = true;
+    btn.disabled = true;
+    try {
+      const leads = extractSearchResults();
+      if (leads.length === 0) { console.debug("Naggar: no profiles found"); btn.disabled = false; saving = false; return; }
+      btn.textContent = `⏳ Saving ${leads.length}...`;
+      const result = await saveLeads(leads);
+      btn.textContent = ` Saved ${result.saved}! (${result.total} total)`;
+      setTimeout(() => { btn.textContent = " Save All Visible"; btn.disabled = false; saving = false; }, 3000);
+    } catch (e) { console.debug("Naggar: save batch error", e); btn.disabled = false; saving = false; }
   };
   document.body.appendChild(btn);
 }
