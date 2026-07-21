@@ -466,7 +466,7 @@ function createSaveLeadBtn() {
       const result = await saveLeads([data]);
       const info = [data.full_name, data.title, data.company_institution].filter(Boolean).join(" — ");
       showToast(`Saved: ${info}`, "success");
-      btn.textContent = ` ${result.total} Saved`;
+      btn.textContent = ` ${data.full_name} ✓`;
       setTimeout(() => { btn.textContent = " Save Lead"; }, 2000);
       btn.style.opacity = "1";
       saving = false;
