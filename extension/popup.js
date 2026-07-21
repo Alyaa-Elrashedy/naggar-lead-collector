@@ -195,15 +195,16 @@ async function renderQueries() {
   const all = [...BUILT_IN_QUERIES, ...custom.map((q, i) => ({ ...q, isCustom: true, idx: i }))];
   $("queryList").innerHTML = all.length === 0
     ? '<div class="empty-state">No queries</div>'
-    : all.map((q, i) =>
-        `<div class="list-item">
+    : all.map((q, i) => {
+        const isProfile = q.url && q.url.includes("/in/");
+        return `<div class="list-item">
           <div class="item-main">
             <div class="item-name">${escapeHtml(q.label)}</div>
-            <div class="item-title" style="font-size:9px;color:#aaa">${q.isCustom ? "Custom" : "Built-in"}</div>
+            <div class="item-title" style="font-size:9px;color:#aaa">${q.isCustom ? (isProfile ? "Profile" : "Custom") : "Built-in"}</div>
           </div>
           <button class="q-open" data-idx="${i}" data-url="${escapeHtml(q.url)}" style="font-size:10px;color:#0a66c2;background:#e8f0fe;padding:2px 10px;border-radius:10px;cursor:pointer;border:none;font-weight:600">Open</button>
-        </div>`
-      ).join("");
+        </div>`;
+      }).join("");
 
   $("queryList").querySelectorAll(".q-open").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -296,25 +297,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Auto Discover tab
   await renderQueries();
 
-  // Add custom query
+  // Add custom query or profile URL
   $("addQueryBtn").addEventListener("click", async () => {
     const input = $("customQueryInput");
     const url = input.value.trim();
     if (!url) { status($("statusSettings"), "Paste a LinkedIn URL first", true); return; }
-    if (!url.includes("linkedin.com/search/results/people")) {
-      status($("statusSettings"), "Must be a LinkedIn People Search URL", true);
+    if (!url.includes("linkedin.com")) {
+      status($("statusSettings"), "Must be a LinkedIn URL", true);
       return;
     }
-    // Extract a label from the URL
     let label = "Custom";
-    const m = url.match(/keywords=([^&]+)/);
-    if (m) label = decodeURIComponent(m[1]).replace(/\+/g, " ").replace(/%20/g, " ").substring(0, 40);
-    const geo = url.match(/geoUrn=(\d+)/);
-    const locNames = { "101282733": "Saudi", "101194590": "UAE", "102100715": "Egypt", "103644278": "USA", "101165590": "UK", "101282230": "Germany" };
-    if (geo && locNames[geo[1]]) label += ` (${locNames[geo[1]]})`;
+    const isProfile = url.includes("/in/");
+    if (isProfile) {
+      const uname = url.match(/linkedin\.com\/in\/([^/?]+)/);
+      label = uname ? `Profile: ${decodeURIComponent(uname[1])}` : "LinkedIn Profile";
+    } else {
+      const m = url.match(/keywords=([^&]+)/);
+      if (m) label = decodeURIComponent(m[1]).replace(/\+/g, " ").replace(/%20/g, " ").substring(0, 40);
+      const geo = url.match(/geoUrn=(\d+)/);
+      const locNames = { "101282733": "Saudi", "101194590": "UAE", "102100715": "Egypt", "103644278": "USA", "101165590": "UK", "101282230": "Germany" };
+      if (geo && locNames[geo[1]]) label += ` (${locNames[geo[1]]})`;
+    }
 
     const curr = await getCustomQueries();
-    if (curr.some(q => q.url === url)) { status($("statusSettings"), "This query already exists"); return; }
+    if (curr.some(q => q.url === url)) { status($("statusSettings"), "Already exists"); return; }
     curr.push({ label, url });
     await setCustomQueries(curr);
     input.value = "";
